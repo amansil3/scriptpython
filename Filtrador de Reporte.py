@@ -2,7 +2,6 @@
 from tkinter import ttk, Label, LabelFrame, Entry, StringVar, Tk, CENTER, W, E, END, Toplevel, filedialog
 import pandas as pd
 from io import StringIO
-from repositorio import Repositorio
 import psycopg2
 from psycopg2 import Error
 from sqlalchemy import create_engine
@@ -92,6 +91,7 @@ class Product:
                 print ('Base de datos volcada')
                 asd = db.execute("SELECT * FROM id_solicitudes").fetchall()
                 print ('asd',asd)
+                print ('75% completado')
             except:
                 print ('Error al volcar la base de datos')
             #Mando el DataFrame a la Base de Datos
@@ -99,6 +99,7 @@ class Product:
                 Report.to_sql('id_solicitudes', con = db, if_exists = 'replace', chunksize = 1000, index=False, index_label=False)
                 self.message['text'] = ''
                 self.message['text'] = 'Operación finalizada correctamente'
+                print ('Operación finalizada correctamente')
             except:
                 print ('Error cargando las solicitudes')
                 return
