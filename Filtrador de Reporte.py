@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 from tkinter import ttk, Label, LabelFrame, Entry, StringVar, Tk, CENTER, W, E, END, Toplevel, filedialog
 import pandas as pd
+import numpy as np
 from io import StringIO
 import psycopg2
 from psycopg2 import Error
@@ -67,19 +68,15 @@ class Product:
         except ValueError:
             self.message['text'] = 'Error durante el proceso, verifique que haya elegido un reporte unificado'
             print ('Error!')
+            self.filename = ''
             return
         except AttributeError:
             self.message['text'] = 'Error durante el proceso, verifique que haya elegido un reporte unificado'
+            self.filename = ''
             print ('Error!')
             return
 
-        #Paso 3: Seleccionar las 3 columnas           
-        Report = self.df.loc[:,['Id','Número','Año']]
-        self.message['text'] = ''
-        self.message['text'] = '75% completado'
-        #print (Report)
-        
-        #Paso4: Exportar a la BD
+        #Paso3: Exportar a la BD
         try:
             #Report.to_excel(r'C:\Users\CIL - Andres\Desktop\Reporte_Filtrado.xlsx', index=False, encoding='utf-8')
             #Conectarse a la BD
@@ -87,26 +84,38 @@ class Product:
             db = create_engine(db_string)
             #Dropeo la BD
             try:
-                db.execute("DELETE FROM id_solicitudes")
-                print ('Base de datos volcada')
-                asd = db.execute("SELECT * FROM id_solicitudes").fetchall()
-                print ('asd',asd)
-                print ('75% completado')
+                SQL_Query = db.execute("SELECT * FROM id_solicitudes").fetchall() #query
+                df2 = pd.DataFrame(SQL_Query, columns=['id','nro','anio'])  #Dataframeo la query
+                df2['EstaEnLaBD?'] = np.where(self.df['Id'] == df2['id'], 'True', 'False') #agrego columna al nuevo dataframe
+                df3 = df2.loc[lambda df2: df2['EstaEnLaBD?'] == 'False'] #guardo en un nuevo dataframe los registros que no esten en la bd
+                
+                #Verifico que el DF originado no este vacío
+                if not df3.empty:
+                    try:
+                        #Mando el DataFrame a la Base de Datos
+                        df3.to_sql('id_solicitudes', con = db, if_exists = 'replace', chunksize = 1000, index=False, index_label=False)
+                        self.message['text'] = ''
+                        self.message['text'] = 'Operación finalizada correctamente'
+                        self.filename = ''
+                    except:
+                        self.message['text'] = ''
+                        self.message['text'] = 'Error cargando las solicitudes'
+                        print ('Error cargando las solicitudes')
+                        self.filename = ''
+                        return
+                else:
+                    self.message['text'] = ''
+                    self.message['text'] = 'No hay solicitudes nuevas a cargar. Proceso finalizado correctamente'
+                    print ('No hay solicitudes nuevas a cargar. Proceso finalizado correctamente')
+                    self.filename = ''
             except:
                 print ('Error al volcar la base de datos')
-            #Mando el DataFrame a la Base de Datos
-            try:
-                Report.to_sql('id_solicitudes', con = db, if_exists = 'replace', chunksize = 1000, index=False, index_label=False)
-                self.message['text'] = ''
-                self.message['text'] = 'Operación finalizada correctamente'
-                print ('Operación finalizada correctamente')
-            except:
-                print ('Error cargando las solicitudes')
-                return
+                self.filename = ''
         except:
             self.message['text'] = ''
             self.message['text'] = 'Error durante el proceso'
             print ('Error!')
+            self.filename = ''
             return
 
 if __name__ == '__main__':
